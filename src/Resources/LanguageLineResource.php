@@ -134,8 +134,13 @@ class LanguageLineResource extends Resource
             ViewColumn::make('preview')
                 ->view('translation-manager::preview-column')
                 ->searchable(query: function (Builder $query, string $search): Builder {
-                    return $query
-                        ->where('text', 'like', "%{$search}%");
+                    return $query->where(function (Builder $query) use ($search) {
+                        foreach (config('translation-manager.available_locales') as $locale) {
+                            $localeCode = $locale['code'];
+                            $query->orWhereRaw("JSON_EXTRACT(text, '$.\"{$localeCode}\"') LIKE ?", ["%{$search}%"]);
+                        }
+                        return $query;
+                    });
                 })
                 ->label(__('translation-manager::translations.preview-in-your-lang', ['lang' => app()->getLocale()]))
                 ->sortable(false),
