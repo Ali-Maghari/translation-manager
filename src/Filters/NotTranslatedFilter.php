@@ -14,7 +14,13 @@ class NotTranslatedFilter extends Filter
             ->form([
                 Select::make('lang')
                     ->label(__('translation-manager::translations.filter-not-translated'))
-                    ->options(collect(config('translation-manager.available_locales'))->pluck('code', 'code'))
+                    ->options(function () {
+                        $options = [];
+                        foreach (config('translation-manager.available_locales') as $locale) {
+                            $options[$locale['code']] = $locale['name'];
+                        }
+                        return $options;
+                    })
                     ->required()
                     ->searchable(),
             ])
@@ -32,7 +38,10 @@ class NotTranslatedFilter extends Filter
                     return null;
                 }
                 
-                return __('translation-manager::translations.not-translated-in', ['lang' => strtoupper($data['lang'])]);
+                $langName = collect(config('translation-manager.available_locales'))
+                    ->firstWhere('code', $data['lang'])['name'] ?? strtoupper($data['lang']);
+                
+                return __('translation-manager::translations.not-translated-in', ['lang' => $langName]);
             });
     }
 }
