@@ -23,4 +23,5 @@ return [
     'quick-translate-enter' => 'أدخل الترجمة باللغة ":lang":',
     'quick-translate-save-and-continue' => 'حفظ والمتابعة',
     'quick-translate-nothing' => 'لم يبق شيء للترجمة!',
+    'not-translated-in' => 'لم يتم ترجمته إلى ":lang"',
 ];

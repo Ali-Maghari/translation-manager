@@ -14,14 +14,25 @@ class NotTranslatedFilter extends Filter
             ->form([
                 Select::make('lang')
                     ->label(__('translation-manager::translations.filter-not-translated'))
-                    ->options(collect(config('translation-manager.available_locales'))->pluck('code', 'code')),
+                    ->options(collect(config('translation-manager.available_locales'))->pluck('code', 'code'))
+                    ->required()
+                    ->searchable(),
             ])
             ->query(function (Builder $query, array $data): Builder {
-                return $query
-                    ->when(
-                        $data['lang'],
-                        fn (Builder $query, $date): Builder => $query->whereNull('text->' . $data['lang'])
-                    );
+                if (!isset($data['lang']) || empty($data['lang'])) {
+                    return $query;
+                }
+                
+                return $query->whereRaw("NOT EXISTS (SELECT 1 FROM JSON_EACH(text) WHERE JSON_EACH.key = ?)", [$data['lang']])
+                    ->orWhereRaw("JSON_EXTRACT(text, ?) IS NULL", ['$."' . $data['lang'] . '"'])
+                    ->orWhereRaw("JSON_EXTRACT(text, ?) = ''", ['$."' . $data['lang'] . '"']);
+            })
+            ->indicateUsing(function (array $data): ?string {
+                if (!isset($data['lang']) || empty($data['lang'])) {
+                    return null;
+                }
+                
+                return __('translation-manager::translations.not-translated-in', ['lang' => strtoupper($data['lang'])]);
             });
     }
 }

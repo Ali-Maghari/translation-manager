@@ -23,4 +23,5 @@ return [
     'quick-translate-enter' => 'Enter the translation in ":lang":',
     'quick-translate-save-and-continue' => 'Save and continue',
     'quick-translate-nothing' => 'Nothing left to translate!',
+    'not-translated-in' => 'Not translated into :lang',
 ];
