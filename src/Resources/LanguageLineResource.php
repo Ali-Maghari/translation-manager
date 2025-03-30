@@ -131,14 +131,31 @@ class LanguageLineResource extends Resource
                     return $record->group . '.' . $record->key;
                 }),
 
-            ViewColumn::make('preview')
+                ViewColumn::make('preview')
                 ->view('translation-manager::preview-column')
                 ->searchable(query: function (Builder $query, string $search): Builder {
                     return $query->where(function (Builder $query) use ($search) {
+                        $encodedSearch = '%' . $search . '%';
+                        $connection = $query->getConnection();
+                        $isSQLite = $connection->getDriverName() === 'sqlite';
+                        
                         foreach (config('translation-manager.available_locales') as $locale) {
                             $localeCode = $locale['code'];
-                            $query->orWhereRaw("JSON_EXTRACT(text, '$.\"{$localeCode}\"') LIKE ?", ["%{$search}%"]);
+                            
+                            if ($isSQLite) {
+                                $query->orWhereRaw(
+                                    "JSON_EXTRACT(text, '$.\"{$localeCode}\"') LIKE ?", 
+                                    [$encodedSearch]
+                                );
+                            } else {
+                                $collation = 'utf8_general_ci';
+                                $query->orWhereRaw(
+                                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(text, '$.\"{$localeCode}\"'))) COLLATE {$collation} LIKE LOWER(?)", 
+                                    [$encodedSearch]
+                                );
+                            }
                         }
+                        
                         return $query;
                     });
                 })

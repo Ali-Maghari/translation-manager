@@ -29,9 +29,27 @@ class NotTranslatedFilter extends Filter
                     return $query;
                 }
                 
-                return $query->whereRaw("NOT EXISTS (SELECT 1 FROM JSON_EACH(text) WHERE JSON_EACH.key = ?)", [$data['lang']])
-                    ->orWhereRaw("JSON_EXTRACT(text, ?) IS NULL", ['$."' . $data['lang'] . '"'])
-                    ->orWhereRaw("JSON_EXTRACT(text, ?) = ''", ['$."' . $data['lang'] . '"']);
+                $connection = $query->getConnection();
+                $driver = $connection->getDriverName();
+                
+                if ($driver === 'sqlite') {
+                    // SQLite compatible query
+                    return $query->where(function ($query) use ($data) {
+                        return $query->whereRaw("JSON_EXTRACT(text, '$.\"{$data['lang']}\"') IS NULL")
+                            ->orWhereRaw("JSON_EXTRACT(text, '$.\"{$data['lang']}\"') = '\"\"'")
+                            ->orWhereRaw("JSON_EXTRACT(text, '$.\"{$data['lang']}\"') = 'null'");
+                    });
+                } else {
+                    $jsonPath = '$."' . $data['lang'] . '"';
+                    
+                    return $query->where(function ($query) use ($data, $jsonPath) {
+                        return $query->whereRaw("JSON_EXTRACT(text, ?) IS NULL", [$jsonPath])
+                            ->orWhereRaw("JSON_EXTRACT(text, ?) = ?", [$jsonPath, ''])
+                            ->orWhereRaw("JSON_EXTRACT(text, ?) = ?", [$jsonPath, '""'])
+                            ->orWhereRaw("JSON_EXTRACT(text, ?) = ?", [$jsonPath, 'null'])
+                            ->orWhereRaw("JSON_EXTRACT(text, ?) = ?", [$jsonPath, '"null"']);
+                    });
+                }
             })
             ->indicateUsing(function (array $data): ?string {
                 if (!isset($data['lang']) || empty($data['lang'])) {
